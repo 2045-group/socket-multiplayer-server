@@ -1,3 +1,4 @@
+// server.js
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
@@ -5,9 +6,29 @@ import { Server } from "socket.io";
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET","POST"],
+    credentials: false,
+  },
+  transports: ["websocket", "polling"], // ixtiyoriy
+  path: "/socket.io" // default
 });
 
+const message = []
 
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("habar", (malumot, ack) => {
+    console.log("from:", socket.id, "data:", malumot);
+    message.push(malumot)
+    io.emit("message", message);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log("User disconnected:", socket.id, reason);
+  });
+});
 
 server.listen(5000, () => console.log("Server running on port 5000"));
