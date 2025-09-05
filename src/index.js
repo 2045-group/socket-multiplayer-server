@@ -26,6 +26,11 @@ io.on("connection", (socket) => {
     io.emit("message", message);
   });
 
+  socket.on("join_game", (malumot) => {
+    console.log("from:", socket.id, "data:", malumot);
+    io.emit("new_user", malumot) // {name: "Ibrohim"}
+  })
+
   socket.on("disconnect", (reason) => {
     console.log("User disconnected:", socket.id, reason);
   });
