@@ -16,6 +16,7 @@ const io = new Server(server, {
 });
 
 const message = []
+const users = []
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -28,7 +29,9 @@ io.on("connection", (socket) => {
 
   socket.on("join_game", (malumot) => {
     console.log("from:", socket.id, "data:", malumot);
-    io.emit("new_user", malumot) // {name: "Ibrohim"}
+    
+    users.find(item => item.name === malumot.name) ? null : users.push({ name: malumot.name, id: socket.id, x: 0, y: 0 })
+    io.emit("new_user", users) // [{name: "Ibrohim"}]
   })
 
   socket.on("disconnect", (reason) => {
