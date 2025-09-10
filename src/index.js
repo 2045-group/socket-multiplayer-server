@@ -18,10 +18,31 @@ const io = new Server(server, {
 const message = []
 const users = []
 
-// Game area boundaries (adjust based on your container size)
+// Game area boundaries
 const GAME_WIDTH = 1400
 const GAME_HEIGHT = 600
 const BUBBLE_SIZE = 56 // 14 * 4 = 56px (size-14 in Tailwind)
+const EAT_RADIUS = 20 // px collision radius
+
+// Food management - now on server side
+let currentFood = {
+  x: Math.floor(Math.random() * GAME_WIDTH),
+  y: Math.floor(Math.random() * GAME_HEIGHT)
+}
+
+const generateNewFood = () => {
+  currentFood = {
+    x: Math.floor(Math.random() * GAME_WIDTH),
+    y: Math.floor(Math.random() * GAME_HEIGHT)
+  }
+}
+
+const checkFoodCollision = (userX, userY) => {
+  const dx = userX - currentFood.x
+  const dy = userY - currentFood.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  return distance <= EAT_RADIUS
+}
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -39,17 +60,20 @@ io.on("connection", (socket) => {
     const existingUser = users.find(item => item.name === malumot.name)
     
     if (!existingUser) {
-      // Add new user with random starting position
+      // Add new user with random starting position and score
       const newUser = {
         name: malumot.name,
         id: socket.id,
         x: Math.random() * (GAME_WIDTH - BUBBLE_SIZE) + BUBBLE_SIZE/2,
-        y: Math.random() * (GAME_HEIGHT - BUBBLE_SIZE) + BUBBLE_SIZE/2
+        y: Math.random() * (GAME_HEIGHT - BUBBLE_SIZE) + BUBBLE_SIZE/2,
+        score: 0
       }
       users.push(newUser)
     }
     
+    // Send current game state to new user
     io.emit("new_user", users)
+    io.emit("food_update", currentFood)
   })
 
   socket.on("move_user", (movement) => {
@@ -69,6 +93,25 @@ io.on("connection", (socket) => {
       // Update user position
       users[userIndex].x = newX
       users[userIndex].y = newY
+      
+      // Check food collision
+      if (checkFoodCollision(newX, newY)) {
+        // Increase score
+        users[userIndex].score += 1
+        
+        // Generate new food
+        generateNewFood()
+        
+        console.log(`${user.name} ate food! Score: ${users[userIndex].score}`)
+        
+        // Notify all clients about food eaten and new food position
+        io.emit("food_eaten", {
+          playerId: socket.id,
+          playerName: user.name,
+          newScore: users[userIndex].score,
+          newFood: currentFood
+        })
+      }
       
       // Emit updated positions to all clients
       io.emit("user_moved", users)
